@@ -3,46 +3,46 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date:    19:23:39 10/29/2024 
+// Create Date:    10:26:05 11/12/2024 
 // Design Name: 
-// Module Name:    IFU 
+// Module Name:    RegPC 
 // Project Name: 
 // Target Devices: 
-// Tool versions:  
+// Tool versions: 
 // Description: 
-// 
+//
 // Dependencies: 
-// 
+//
 // Revision: 
 // Revision 0.01 - File Created
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
+`include "constants.v"
 `default_nettype none
 
-module IFU(
+module RegPC(
     input wire clk, 
     input wire reset,
+    input wire Req,
     input wire [31:0] pcIn,
     output wire [31:0] pcOut,
-    output wire [31:0] Instr
+    output wire [4:0] ExcCode
     );
 
     reg [31:0] PC;
-    reg [31:0] IM [0:4095];
-    wire [31:0] addr;
 
     always @(posedge clk) begin
         if (reset) begin
             PC <= 32'h3000;
-            $readmemh("code.txt", IM);
+        end else if (Req) begin
+            PC <= 32'h4180;
         end else begin
             PC <= pcIn;
         end
     end
 
     assign pcOut = PC;
-    assign addr = pcOut - 32'h3000;
-    assign Instr = IM[addr[13:2]];
-	 
+    assign ExcCode = ((PC[1:0] != 2'b00) || (PC < 32'h3000) || (PC > 32'h6ffc)) ? `AdEL : `ExcNone;
+
 endmodule

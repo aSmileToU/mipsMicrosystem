@@ -24,6 +24,8 @@ module IFtoID(
     input wire clk,
     input wire reset,
     input wire stall,
+    input wire flush,
+    input wire Req,
 
     input wire [31:0] IF_pc,
     input wire [5:0] IF_op,
@@ -33,6 +35,8 @@ module IFtoID(
     input wire [4:0] IF_rd,
     input wire [15:0] IF_immediate,
     input wire [25:0] IF_instrIndex,
+    input wire IF_BD,
+    input wire [4:0] IF_ExcCode,
     
     output wire [31:0] ID_pc,
     output wire [5:0] ID_op,
@@ -41,7 +45,9 @@ module IFtoID(
     output wire [4:0] ID_rt,
     output wire [4:0] ID_rd, 
     output wire [15:0] ID_immediate,
-    output wire [25:0] ID_instrIndex
+    output wire [25:0] ID_instrIndex,
+    output wire ID_BD,
+    output wire [4:0] ID_ExcCode_pre
     ); 
 
     reg [31:0] pc;
@@ -52,6 +58,8 @@ module IFtoID(
     reg [4:0] rd;
     reg [15:0] immediate;
     reg [25:0] instrIndex;
+    reg BD;
+    reg [4:0] ExcCode;
 
     always @(posedge clk ) begin
         if (reset) begin 
@@ -63,6 +71,19 @@ module IFtoID(
             rd <= 5'd0;
             immediate <= 16'd0;
             instrIndex <= 16'd0;
+            BD <= 1'b0;
+            ExcCode <= 5'd0;
+        end else if (Req) begin
+            pc <= 32'h4180;
+            op <= 6'd0;
+            func <= 6'd0;
+            rs <= 5'd0;
+            rt <= 5'd0;
+            rd <= 5'd0;
+            immediate <= 16'd0;
+            instrIndex <= 16'd0;
+            BD <= 1'b0;
+            ExcCode <= 5'd0;
         end else if (stall) begin
             pc <= pc;
             op <= op;
@@ -72,6 +93,19 @@ module IFtoID(
             rd <= rd;
             immediate <= immediate;
             instrIndex <= instrIndex;
+            BD <= BD;
+            ExcCode <= ExcCode;
+        end else if (flush) begin
+            pc <= 32'h3000;
+            op <= 6'd0;
+            func <= 6'd0;
+            rs <= 5'd0;
+            rt <= 5'd0;
+            rd <= 5'd0;
+            immediate <= 16'd0;
+            instrIndex <= 16'd0;
+            BD <= 1'b0;
+            ExcCode <= 5'd0;
         end else begin
             pc <= IF_pc;
             op <= IF_op;
@@ -81,6 +115,8 @@ module IFtoID(
             rd <= IF_rd;
             immediate <= IF_immediate;
             instrIndex <= IF_instrIndex;
+            BD <= IF_BD;
+            ExcCode <= IF_ExcCode;
         end
     end
  
@@ -92,5 +128,7 @@ module IFtoID(
     assign ID_rd = rd;
     assign ID_immediate = immediate;
     assign ID_instrIndex = instrIndex;
+    assign ID_BD = BD;
+    assign ID_ExcCode_pre = ExcCode;
 
 endmodule

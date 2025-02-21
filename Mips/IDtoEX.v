@@ -24,6 +24,7 @@ module IDtoEX(
     input wire clk,
     input wire reset,
     input wire stall,
+    input wire Req,
 
     input wire [31:0] ID_pc,
     input wire [4:0] ID_rs,
@@ -39,8 +40,12 @@ module IDtoEX(
     input wire ID_RegWrite,
     input wire ID_MemWrite,
     input wire ID_MdWrite,
+    input wire ID_CP0Write,
     input wire [7:0] ID_ALUOp,
     input wire [7:0] ID_MemLen,
+    input wire ID_EXLClr,
+    input wire ID_BD,
+    input wire [4:0] ID_ExcCode,
 
     output wire [31:0] EX_pc,
     output wire [4:0] EX_rs,
@@ -56,8 +61,12 @@ module IDtoEX(
     output wire EX_RegWrite,
     output wire EX_MemWrite,
     output wire EX_MdWrite,
+    output wire EX_CP0Write,
     output wire [7:0] EX_ALUOp,
-    output wire [7:0] EX_MemLen
+    output wire [7:0] EX_MemLen,
+    output wire EX_EXLClr,
+    output wire EX_BD,
+    output wire [4:0] EX_ExcCode_pre
     );
 
     reg [31:0] pc;
@@ -74,11 +83,15 @@ module IDtoEX(
     reg RegWrite;
     reg MemWrite;
     reg MdWrite;
+    reg CP0Write;
     reg [7:0] ALUOp;
     reg [7:0] MemLen;
+    reg EXLClr;
+    reg BD;
+    reg [4:0] ExcCode;
 
     always @(posedge clk ) begin
-        if (reset || stall) begin
+        if (reset) begin
             pc <= 32'h3000;
             rs <= 5'd0;
             rt <= 5'd0;
@@ -93,8 +106,54 @@ module IDtoEX(
             RegWrite <= 1'd0;
             MemWrite <= 1'd0;
             MdWrite <= 1'd0;
+            CP0Write <= 1'd0;
             ALUOp <= 8'd0;
             MemLen <= 8'd0;
+            EXLClr <= 1'd0;
+            BD <= 1'd0;
+            ExcCode <= 5'd0;
+        end else if (Req)begin
+            pc <= 32'h4180;
+            rs <= 5'd0;
+            rt <= 5'd0;
+            rd <= 5'd0;
+            regRD1 <= 32'd0;
+            regRD2 <= 32'd0;
+            EXTOut <= 32'd0;
+            timeNew <= 2'd0;
+            RegDst <= 8'd0;
+            ALUSrc <= 8'd0;
+            RegSrc <= 8'd0;
+            RegWrite <= 1'd0;
+            MemWrite <= 1'd0;
+            MdWrite <= 1'd0;
+            CP0Write <= 1'd0;
+            ALUOp <= 8'd0;
+            MemLen <= 8'd0;
+            EXLClr <= 1'd0;
+            BD <= 1'd0;
+            ExcCode <= 5'd0;
+        end else if (stall)begin
+            pc <= ID_pc;
+            rs <= 5'd0;
+            rt <= 5'd0;
+            rd <= 5'd0;
+            regRD1 <= 32'd0;
+            regRD2 <= 32'd0;
+            EXTOut <= 32'd0;
+            timeNew <= 2'd0;
+            RegDst <= 8'd0;
+            ALUSrc <= 8'd0;
+            RegSrc <= 8'd0;
+            RegWrite <= 1'd0;
+            MemWrite <= 1'd0;
+            MdWrite <= 1'd0;
+            CP0Write <= 1'd0;
+            ALUOp <= 8'd0;
+            MemLen <= 8'd0;
+            EXLClr <= 1'd0;
+            BD <= ID_BD;
+            ExcCode <= ID_ExcCode;
         end else begin
             pc <= ID_pc;
             rs <= ID_rs;
@@ -109,8 +168,12 @@ module IDtoEX(
             RegWrite <= ID_RegWrite;
             MemWrite <= ID_MemWrite;
             MdWrite <= ID_MdWrite;
+            CP0Write <= ID_CP0Write;
             ALUOp <= ID_ALUOp;
             MemLen <= ID_MemLen;
+            EXLClr <= ID_EXLClr;
+            BD <= ID_BD;
+            ExcCode <= ID_ExcCode;
             if (ID_timeNew) begin
                 timeNew <= ID_timeNew - 2'd1;
             end else begin
@@ -133,7 +196,11 @@ module IDtoEX(
     assign EX_RegWrite = RegWrite;
     assign EX_MemWrite = MemWrite;
     assign EX_MdWrite = MdWrite;
+    assign EX_CP0Write = CP0Write;
     assign EX_ALUOp = ALUOp;
     assign EX_MemLen = MemLen;
+    assign EX_EXLClr = EXLClr;
+    assign EX_BD = BD;
+    assign EX_ExcCode_pre = ExcCode;
 
 endmodule

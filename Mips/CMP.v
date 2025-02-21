@@ -32,10 +32,10 @@ module CMP(
     always @(*) begin
        case (CMPOp)
             `cmpEqual: begin
-                tmp = (CMPInput1 == CMPInput2) ? 1'b1 : 1'b0;       
+                tmp <= (CMPInput1 == CMPInput2) ? 1'b1 : 1'b0;       
             end
             `cmpUnequal: begin
-                tmp = (CMPInput1 != CMPInput2) ? 1'b1 : 1'b0;
+                tmp <= (CMPInput1 != CMPInput2) ? 1'b1 : 1'b0;
             end
             default: ;
         endcase 
