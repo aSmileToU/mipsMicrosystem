@@ -18,42 +18,39 @@
 // Additional Comments: 
 // 
 //////////////////////////////////////////////////////////////////////////////////
-`define Next 2'd0  
-`define Offset 2'd1 
-`define Instr_index 2'd2 
-`define RegtoPC 2'd3
+`include "constants.v"
+`default_nettype none
+ 
 module NPC(
-    input [31:0] pc,
-    input [31:0] ALUOut,
-    input [15:0] offset,
-    input [25:0] instr_index,
-    input [31:0] GRF,
-    input [1:0] transOp,
-    output [31:0] pcNext
+    input wire [31:0] pc,
+    input wire [15:0] offset,
+    input wire [25:0] instrIndex,
+    input wire [31:0] GRF,
+    input wire [7:0] NPCOp,
+    input wire CMPOut,
+    output wire [31:0] pcNext
     );
 
     reg [31:0] tmp;
     always @(*) begin
-        case (transOp)
-            `Next: begin
+        case (NPCOp)
+            `npcNext: begin
                 tmp = pc + 32'h4;
             end 
-            `Offset: begin 
-                if (ALUOut == 32'd1) begin
+            `npcOffset: begin 
+                if (CMPOut) begin
                     tmp = pc + 32'h4 + {{14{offset[15]}},offset,2'b00};
                 end else begin
-                    tmp = pc + 32'h4;
+                    tmp = pc + 32'h8;
                 end
             end
-            `Instr_index: begin
-                tmp = {pc[31:28], instr_index, 2'd0};
+            `npcInstrIndex: begin
+                tmp = {pc[31:28], instrIndex, 2'd0};
             end
-            `RegtoPC: begin
+            `npcReg: begin
                 tmp = GRF; 
             end
-            default: begin
-                tmp = 32'h3000;
-            end
+            default: ;
         endcase
     end
 

@@ -18,14 +18,13 @@
 // Additional Comments:  
 //  
 //////////////////////////////////////////////////////////////////////////////////
-`define zeroExtend 2'd0
-`define signExtend 2'd1
-`define upperExtend 2'd2
- 
+`include "constants.v"
+`default_nettype none
+
 module EXT(
-    input [1:0] EXTOp,
-    input [15:0] In,
-    output [31:0] Out
+    input wire [7:0] EXTOp,
+    input wire [15:0] In,
+    output wire [31:0] Out
     );
     
     reg [31:0] tmp;
@@ -41,9 +40,7 @@ module EXT(
             `upperExtend: begin
                 tmp = {{In},16'h0};
             end
-            default: begin
-                tmp = 32'h0;
-            end
+            default: ;
         endcase
     end
 

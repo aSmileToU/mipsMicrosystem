@@ -5,8 +5,6 @@
 1. 顶层设计
    	在logisim搭建的CPU中，将包含IFU，Splitter，Controller，GRF，ALU，DM，EXT。在其中进行合理的电路连接后，能够使其拥有解析指令的能力，完成单周期CPU。利用一个包含Controller的Control Unit来连接各个结构的输入端口和输出端口。
 
-   ​	符合高内聚低耦合的设计原则。
-
 2. IFU
 
    - 可以使用多路选择器进行赋初值和异步复位
@@ -20,7 +18,6 @@
      |  pcIn  |  I   |  32  | 计数器信号，用于写入 |
      | pcOut  |  O   |  32  | 计数器信号，用于输出 |
      | Instr  |  O   |  32  | 输出的指令           |
-
 3. GRF
 
    - 32个寄存器，0号寄存器始终保持0，其余复位后均为0
@@ -36,7 +33,6 @@
      |   WD   |  I   |  32  | 写入的数据                                  |
      |  RD1   |  O   |  32  | 输出RD1                                     |
      |  RD2   |  O   |  32  | 输出RD2                                     |
-
 4. ALU
 
    - 提供加减乘除，位运算，大小比较和移位等运算
@@ -55,9 +51,7 @@
      |    +     |  0   |
      |    -     |  1   |
      |    \|     |  2   |
-     |    ==     |  3   |
-     |    >    |  4   |
-     |    <<     |  5   |
+     |    <    |  3   |
 
 
 5. DM
@@ -113,50 +107,70 @@
      | RegSrc |  O   |  2   | 寄存器读写内存的值<br />0为ALU结果<br />1为Mem结果<br />2为PC的值 |
      | RegWrite |  O   |  1   | 寄存器读写<br />1表示可以写入         |
      |   MemWrite    |  O   |  1   | 内存读写<br />1表示可以写入           |
-     |  nPC_sel  |  O   |  2   | 0表示PC直接加4<br />1表示PC加offset<br />2表示使用Instr_index<br />3表示使用寄存器的值 |
+     |  NPCOp  |  O   |  2   | 0表示PC直接加4<br />1表示PC加offset<br />2表示使用Instr_index<br />3表示使用寄存器的值 |
      |   EXTOp   |  O   |  2   | 扩展类型                              |
      |   ALUOp    |  O   |  8   | ALU操作                           |
      
 
+以上是p4的内容，除此之外，流水线CPU还需要几个模块来完成。
 
+1. CMP模块
 
+   - 用于比较两个RegRD，输出在D级的跳转信号
 
+     | 端口名 | I/O  | 位宽 | 用处     |
+     | :----: | :--: | :--: | :------- |
+     |   Op   |  I   |  4   | 操作类型 |
+     |   I1   |  I   |  32  | 数据1    |
+     |   I2   |  I   |  32  | 数据2    |
+     |   O    |  O   |  1   | 是否跳转 |
+
+2. 各级中间寄存器
+
+   - 用于各级之间的参数转移。
+
+3. 阻塞的操作
+
+   - 锁住pc的值，使IF的pc不变。
+   - 锁住IFtoID寄存器，使ID的情况不变。
+   - reset IDtoEX寄存器，让CPU空转。
+
+4. hazardControl模块
+
+   - 获取各级的DegDst, DegSrc, RegWrite，得到各级的reg_AD, reg_AW
+   - 比较各级信号，发出阻塞信号和转发结果
+   - 把转发的MUX直接综合到hazardControl里面
 
 ## 测试方案
 
 利用MARS构造样例，利用mips的逐行调试功能对比仿真过程中输出的结果对比来判断正确性。
 
+利用课程的覆盖率工具检查疏漏
+
 ## 思考题
 
-1. 由ALU的输出取[11:2]位后取得的
+1. 如果延迟槽的指令存在数据冒险，则会导致阻塞
 
-   在实际的CPU中，DM是8bit为单位的，存一个字需要4个寄存器，位数为[11:2]更符合实际情况
+   beq \$1, \$2. branch
 
-2. 第一种
+   add \$2. \$1, \$2
 
-   ```
-   RegWrite = (Operation == ADD) | (Operation == SUB) | (Operation == SLL);
-   ```
+2. 延迟槽会占据一个PC位置，同时延迟槽一定会被处理，故应该PC+8
 
-   第二种
+3. 功能部件周期较长，会导致时钟周期变长
 
-   ```
-   `fADD: begin
-   	RegDst = `RD;
-   	ALUSrc = `GRFmem;
-   	RegSrc = `ALUOut;
-   	RegWrite = `YES;
-   	MemWrite = `NO;
-   	nPC_sel = `Next;
-   	EXTOp = `zeroExtend;
-   	ALUOp = `Add;
-   end
-   ```
+4. 处理rs/rt是否与之前指令的regAW相同
 
-   第一种方法减少了运算器的使用，可扩展性强；第二种方法比较直观，方便debug
+5. 需求者：D的regRD1，regRD2，E的regRD1，regRD2，M的regRD2
 
-3. 在同步复位中，需要在时钟周期的上升沿进行复位，clk优先级高
+   供给者：各级已经生成好的regWD
 
-   在异步复位中，只要reset置1即可复位，reset优先级高
+6. reg_Src和reg_AW，ALUSrc,mem_A可能要扩展, 可能要新增mem_Src信号
 
-4. ADD/ADDI指令溢出是由于计算后溢出出现了1，并且ALU会输出一个溢出flag，在不输出溢出信号的情况下，ADD/ADDI和ADDU/ADDIU没有其他计算上的区别。
+7. 集中式译码，
+
+   优势：方便书写Control部分，没有多余引脚。
+
+   不足：需要传输的值较多，不便增加控制信号。
+
+8. 可以提前转发，比如ALUOut不需要在M级，在E级时即可完成转发，减少阻塞的情况

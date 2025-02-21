@@ -18,12 +18,14 @@
 // Additional Comments: 
 //
 //////////////////////////////////////////////////////////////////////////////////
+`default_nettype none
+
 module IFU(
-    input clk, 
-    input reset,
-    input [31:0] pcIn,
-    output [31:0] pcOut,
-    output [31:0] Instr
+    input wire clk, 
+    input wire reset,
+    input wire [31:0] pcIn,
+    output wire [31:0] pcOut,
+    output wire [31:0] Instr
     );
 
     reg [31:0] PC;
@@ -38,8 +40,9 @@ module IFU(
             PC <= pcIn;
         end
     end
-    assign addr = pcOut - 32'h3000;
+
     assign pcOut = PC;
+    assign addr = pcOut - 32'h3000;
     assign Instr = IM[addr[13:2]];
 	 
 endmodule
