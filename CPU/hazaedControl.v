@@ -26,15 +26,18 @@ module hazaedControl(
     input wire [4:0] ID_rt,
     input wire [1:0] ID_rsTimeUse,
     input wire [1:0] ID_rtTimeUse,
+    input wire ID_MdRead,
+    input wire [7:0] busy,
 
     input wire [31:0] EX_pc,
-	input wire [4:0] EX_rs,
+    input wire [4:0] EX_rs,
     input wire [4:0] EX_rt,
     input wire [4:0] EX_rd,
     input wire [7:0] EX_RegDst,
     input wire [7:0] EX_RegSrc,
     input wire [1:0] EX_timeNew,
     input wire EX_RegWrite, 
+    input wire EX_MdWrite,
 
     input wire [31:0] MEM_pc,
     input wire [4:0] MEM_rt,
@@ -101,7 +104,7 @@ module hazaedControl(
     wire Stall_RS0_E2 = (ID_rsTimeUse == 2'd0) & (EX_timeNew == 2'd2) & (ID_rs == EX_regAW) & (ID_rs != 5'd0) & EX_RegWrite;
     wire Stall_RS0_E1 = (ID_rsTimeUse == 2'd0) & (EX_timeNew == 2'd1) & (ID_rs == EX_regAW) & (ID_rs != 5'd0) & EX_RegWrite;
     wire Stall_RS0_M1 = (ID_rsTimeUse == 2'd0) & (MEM_timeNew == 2'd1) & (ID_rs == MEM_regAW) & (ID_rs != 5'd0) & MEM_RegWrite;
-
+    
     wire Stall_RT1_E2 = (ID_rtTimeUse == 2'd1) & (EX_timeNew == 2'd2) & (ID_rt == EX_regAW) & (ID_rt != 5'd0) & EX_RegWrite;
     wire Stall_RT0_E2 = (ID_rtTimeUse == 2'd0) & (EX_timeNew == 2'd2) & (ID_rt == EX_regAW) & (ID_rt != 5'd0) & EX_RegWrite;
     wire Stall_RT0_E1 = (ID_rtTimeUse == 2'd0) & (EX_timeNew == 2'd1) & (ID_rt == EX_regAW) & (ID_rt != 5'd0) & EX_RegWrite;
@@ -109,7 +112,10 @@ module hazaedControl(
 
     wire Stall_RS = Stall_RS1_E2 | Stall_RS0_E2 | Stall_RS0_E1 | Stall_RS0_M1 ;
     wire Stall_RT = Stall_RT1_E2 | Stall_RT0_E2 | Stall_RT0_E1 | Stall_RT0_M1 ;
-    assign stall = Stall_RS | Stall_RT;
+
+    wire Stall_MD = (EX_MdWrite == `YES || busy > 8'b0) & (ID_MdRead == `YES);
+
+    assign stall = Stall_RS | Stall_RT | Stall_MD;
 
     //forward
     wire [7:0] ID_F_regRD1 = ((ID_rs == EX_regAW) && (ID_rs != 5'd0) && EX_RegWrite && (EX_timeNew == 2'd0)) ? `EX_forward :

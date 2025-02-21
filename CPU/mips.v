@@ -23,7 +23,19 @@
 
 module mips(
     input wire clk,
-    input wire reset
+    input wire reset,
+    input wire [31:0] i_inst_rdata,
+    input wire [31:0] m_data_rdata,
+
+    output wire [31:0] i_inst_addr,
+    output wire [31:0] m_data_addr,
+    output wire [31:0] m_data_wdata,
+    output wire [3 :0] m_data_byteen,
+    output wire [31:0] m_inst_addr,
+    output wire w_grf_we,
+    output wire [4:0] w_grf_addr,
+    output wire [31:0] w_grf_wdata,
+    output wire [31:0] w_inst_addr
     );
 
 //F 
@@ -59,10 +71,13 @@ wire [7:0] ID_ALUSrc;
 wire [7:0] ID_RegSrc;
 wire ID_RegWrite;
 wire ID_MemWrite;
+wire ID_MdWrite;
+wire ID_MdRead;
 wire [7:0] ID_NPCOp;
 wire [7:0] ID_EXTOp;
 wire [7:0] ID_ALUOp;
 wire [7:0] ID_CMPOp;
+wire [7:0] ID_MemLen;
 
 wire [31:0] ID_regRD1_pre;
 wire [31:0] ID_regRD2_pre;
@@ -73,6 +88,8 @@ wire ID_CMPOut;
 wire [31:0] ID_pcNext;
 
 //E
+wire [7:0] busy;
+
 wire [31:0] EX_pc;
 wire [4:0] EX_rs;
 wire [4:0] EX_rt;
@@ -86,7 +103,9 @@ wire [7:0] EX_ALUSrc;
 wire [7:0] EX_RegSrc;
 wire EX_RegWrite;
 wire EX_MemWrite;
+wire EX_MdWrite;
 wire [7:0] EX_ALUOp;
+wire [7:0] EX_MemLen;
 
 wire [31:0] EX_regRD1;
 wire [31:0] EX_regRD2;
@@ -104,10 +123,13 @@ wire [7:0] MEM_RegDst;
 wire [7:0] MEM_RegSrc;
 wire MEM_RegWrite;
 wire MEM_MemWrite;
+wire [7:0] MEM_MemLen;
 
 wire [31:0] MEM_regRD2;
 wire [31:0] MEM_memRD;
-
+wire [31:0] MEM_memRD_Word;
+wire [3:0] MEM_MemByteEn;
+wire [31:0] MEM_MemWD;
 //W
 wire [31:0] WB_pc;
 wire [4:0] WB_rt;
@@ -122,6 +144,21 @@ wire WB_RegWrite;
 wire [4:0] WB_regAW;
 wire [31:0] WB_regWD;
 
+//assigns
+
+assign IF_Instr = i_inst_rdata; 
+assign MEM_memRD_Word = m_data_rdata;
+
+assign i_inst_addr = IF_pc;
+assign m_data_addr = MEM_ALUOut;
+assign m_data_wdata = MEM_MemWD;
+assign m_data_byteen = MEM_MemByteEn;
+assign m_inst_addr = MEM_pc;
+assign w_grf_we = WB_RegWrite;
+assign w_grf_addr = WB_regAW;
+assign w_grf_wdata = WB_regWD;
+assign w_inst_addr = WB_pc;
+
 //F 
 
 assign IF_pcIn = (stall == `YES) ? IF_pc :
@@ -132,6 +169,8 @@ hazaedControl hazaedcontrol (
     .ID_rt(ID_rt), 
     .ID_rsTimeUse(ID_rsTimeUse), 
     .ID_rtTimeUse(ID_rtTimeUse), 
+    .ID_MdRead(ID_MdRead), 
+    .busy(busy),
     .EX_pc(EX_pc), 
     .EX_rs(EX_rs), 
     .EX_rt(EX_rt), 
@@ -140,6 +179,7 @@ hazaedControl hazaedcontrol (
     .EX_RegSrc(EX_RegSrc), 
     .EX_timeNew(EX_timeNew), 
     .EX_RegWrite(EX_RegWrite), 
+    .EX_MdWrite(EX_MdWrite), 
     .MEM_pc(MEM_pc), 
     .MEM_rt(MEM_rt), 
     .MEM_rd(MEM_rd), 
@@ -172,12 +212,11 @@ hazaedControl hazaedcontrol (
     .MEM_regRD2(MEM_regRD2)
     );
 
-IFU ifu (
+RegPC regpc (
     .clk(clk), 
     .reset(reset), 
     .pcIn(IF_pcIn), 
-    .pcOut(IF_pc), 
-    .Instr(IF_Instr)
+    .pcOut(IF_pc)
     );
 
 Spiltter spiltter (
@@ -225,10 +264,13 @@ controlUnit controlunit (
     .RegSrc(ID_RegSrc), 
     .RegWrite(ID_RegWrite), 
     .MemWrite(ID_MemWrite), 
+    .MdWrite(ID_MdWrite), 
+    .MdRead(ID_MdRead), 
     .NPCOp(ID_NPCOp), 
     .EXTOp(ID_EXTOp), 
     .ALUOp(ID_ALUOp), 
-    .CMPOp(ID_CMPOp)
+    .CMPOp(ID_CMPOp),
+    .MemLen(ID_MemLen)
     );
 
 GRF grf (
@@ -284,7 +326,9 @@ IDtoEX IdtoEx (
     .ID_RegSrc(ID_RegSrc), 
     .ID_RegWrite(ID_RegWrite), 
     .ID_MemWrite(ID_MemWrite), 
+    .ID_MdWrite(ID_MdWrite), 
     .ID_ALUOp(ID_ALUOp), 
+    .ID_MemLen(ID_MemLen), 
     .EX_pc(EX_pc), 
     .EX_rs(EX_rs), 
     .EX_rt(EX_rt), 
@@ -298,7 +342,9 @@ IDtoEX IdtoEx (
     .EX_RegSrc(EX_RegSrc), 
     .EX_RegWrite(EX_RegWrite), 
     .EX_MemWrite(EX_MemWrite), 
-    .EX_ALUOp(EX_ALUOp)
+    .EX_MdWrite(EX_MdWrite), 
+    .EX_ALUOp(EX_ALUOp), 
+    .EX_MemLen(EX_MemLen)
     );
 
 //E
@@ -306,10 +352,13 @@ IDtoEX IdtoEx (
 assign ALUInput2 = (EX_ALUSrc == `aluSrcReg) ? EX_regRD2 : EX_EXTOut;
 
 ALU alu (
+    .clk(clk),
+    .reset(reset),
     .ALUInput1(EX_regRD1), 
     .ALUInput2(ALUInput2), 
     .ALUOp(EX_ALUOp), 
-    .ALUOut(EX_ALUOut)
+    .ALUOut(EX_ALUOut),
+    .busy(busy)
     );
 
 EXtoMEM ExtoMem (
@@ -325,6 +374,7 @@ EXtoMEM ExtoMem (
     .EX_RegSrc(EX_RegSrc), 
     .EX_RegWrite(EX_RegWrite), 
     .EX_MemWrite(EX_MemWrite), 
+    .EX_MemLen(EX_MemLen), 
     .MEM_pc(MEM_pc), 
     .MEM_rt(MEM_rt), 
     .MEM_rd(MEM_rd), 
@@ -334,18 +384,26 @@ EXtoMEM ExtoMem (
     .MEM_RegDst(MEM_RegDst), 
     .MEM_RegSrc(MEM_RegSrc), 
     .MEM_RegWrite(MEM_RegWrite), 
-    .MEM_MemWrite(MEM_MemWrite)
+    .MEM_MemWrite(MEM_MemWrite), 
+    .MEM_MemLen(MEM_MemLen)
     );
 
 //M
-DM dm (
-    .clk(clk), 
-    .reset(reset), 
-    .memWE(MEM_MemWrite), 
-    .pc(MEM_pc), 
-    .memAddr(MEM_ALUOut), 
-    .memWD(MEM_regRD2), 
-    .memRD(MEM_memRD)
+
+MemByte memByte (
+    .MemA(MEM_ALUOut[1:0]), 
+    .RegRD2(MEM_regRD2),
+    .MemLen(MEM_MemLen), 
+    .MemWrite(MEM_MemWrite), 
+    .MemByteEn(MEM_MemByteEn),
+    .MemWD(MEM_MemWD)
+    );
+
+MemEXT memExt (
+    .MemA(MEM_ALUOut[1:0]), 
+    .MemLen(MEM_MemLen), 
+    .Din(MEM_memRD_Word), 
+    .Dout(MEM_memRD)
     );
 
 MEMtoWB MemtoWb (

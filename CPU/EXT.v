@@ -32,13 +32,13 @@ module EXT(
     always @(*) begin
         case (EXTOp)
             `zeroExtend: begin
-                tmp = {16'h0,{In}};
+                tmp <= {16'h0,{In}};
             end
             `signExtend: begin
-                tmp = {{16{In[15]}},{In}};
+                tmp <= {{16{In[15]}},{In}};
             end
             `upperExtend: begin
-                tmp = {{In},16'h0};
+                tmp <= {{In},16'h0};
             end
             default: ;
         endcase

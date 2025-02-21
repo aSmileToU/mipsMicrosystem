@@ -38,12 +38,17 @@ module GRF(
     always @(posedge clk) begin
         if (reset) begin
             for (i = 0; i < 32;i = i + 1) begin
-                Register[i] <= 32'h0;
+                if (i == 28) begin
+                    Register[i] <= 32'h1800;
+                end else if (i == 29) begin
+                    Register[i] <= 32'h2ffc;
+                end else begin
+                    Register[i] <= 32'h0;
+                end
             end
         end else begin
             if (regWE && regAW) begin
                 Register[regAW] <= regWD;
-                $display("%d@%h: $%d <= %h", $time, pc, regAW, regWD);
             end else begin
                 Register[regAW] <= Register[regAW];
             end

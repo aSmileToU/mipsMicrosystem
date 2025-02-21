@@ -32,6 +32,7 @@ module EXtoMEM(
     input wire [7:0] EX_RegSrc,
     input wire EX_RegWrite,
     input wire EX_MemWrite,
+    input wire [7:0] EX_MemLen,
 
     output wire [31:0] MEM_pc,
     output wire [4:0] MEM_rt,
@@ -42,7 +43,8 @@ module EXtoMEM(
     output wire [7:0] MEM_RegDst,
     output wire [7:0] MEM_RegSrc,
     output wire MEM_RegWrite,
-    output wire MEM_MemWrite
+    output wire MEM_MemWrite,
+    output wire [7:0] MEM_MemLen
     );
 
     reg [31:0] pc;
@@ -55,6 +57,7 @@ module EXtoMEM(
     reg [7:0] RegSrc;
     reg RegWrite;
     reg MemWrite;
+    reg [7:0] MemLen;
 
     always @(posedge clk ) begin
         if (reset) begin
@@ -68,17 +71,18 @@ module EXtoMEM(
             RegSrc <= 8'd0;
             RegWrite <= 1'd0;
             MemWrite <= 1'd0;
+            MemLen <= 8'd0;
         end else begin
             pc <= EX_pc;
             rt <= EX_rt;
             rd <= EX_rd;
             ALUOut <= EX_ALUOut;
             regRD2 <= EX_regRD2;
-            timeNew <= EX_timeNew;
             RegDst <= EX_RegDst;
             RegSrc <= EX_RegSrc;
             RegWrite <= EX_RegWrite;
             MemWrite <= EX_MemWrite;
+            MemLen <= EX_MemLen;
             if (EX_timeNew) begin
                 timeNew <= EX_timeNew - 2'd1;
             end else begin
@@ -97,5 +101,6 @@ module EXtoMEM(
     assign MEM_RegSrc = RegSrc;
     assign MEM_RegWrite = RegWrite;
     assign MEM_MemWrite = MemWrite;
-
+    assign MEM_MemLen = MemLen;
+	 
 endmodule
